@@ -1,62 +1,117 @@
 import random
 
-def create_board(size):
-    board = []
-    for _ in range(size):
-        row = ["O"] * size
-        board.append(row)
-    return board
+class Board:
+    def __init__(self):
+        self.size = 10
+        self.ships = {'Aircraft Carrier': 5, 'Battleship': 4, 'Submarine': 3, 'Destroyer': 3, 'Patrol Boat': 2}
+        self.grid = [[' ' for _ in range(self.size)] for _ in range(self.size)]
 
-def print_board(board):
-    for row in board:
-        print(" ".join(row))
+    def place_ship(self, ship, row, col, orientation):
+        size = self.ships[ship]
+        if orientation == 'h':
+            for c in range(col, col + size):
+                self.grid[row][c] = ship[0]
+        else:
+            for r in range(row, row + size):
+                self.grid[r][col] = ship[0]
 
-def place_ships(board, num_ships):
-    size = len(board)
-    for _ in range(num_ships):
-        ship_row = random.randint(0, size - 1)
-        ship_col = random.randint(0, size - 1)
-        while board[ship_row][ship_col] == "X":
-            ship_row = random.randint(0, size - 1)
-            ship_col = random.randint(0, size - 1)
-        board[ship_row][ship_col] = "X"
+    def print_board(self):
+        print("  ", " ".join([chr(65 + i) for i in range(self.size)]))
+        for i, row in enumerate(self.grid):
+            print(f"{i+1:2}", " ".join(row))
+        print()
 
-def check_guess(guess, ships):
-    row, col = guess
-    if ships[row][col] == "X":
-        print("Попадание!")
-        ships[row][col] = "!"
+    def is_valid_location(self, row, col):
+        return 0 <= row < self.size and 0 <= col < self.size
+
+    def is_ship_location_valid(self, ship, row, col, orientation):
+        size = self.ships[ship]
+        if orientation == 'h':
+            return all([self.is_valid_location(row, c) and self.grid[row][c] == ' ' for c in range(col, col + size)])
+        else:
+            return all([self.is_valid_location(r, col) and self.grid[r][col] == ' ' for r in range(row, row + size)])
+
+    def is_ship_sunk(self, ship):
+        symbol = ship[0]
+        for row in self.grid:
+            if symbol in row:
+                return False
         return True
-    else:
-        print("Промах!")
-        return False
+
+class Player:
+    def __init__(self, name):
+        self.name = name
+        self.board = Board()
+        self.enemy_board = Board()
+
+    def place_ships(self):
+        for ship, size in self.board.ships.items():
+            while True:
+                self.board.print_board()
+                print(f"{self.name}, place your {ship} ({size} cells)")
+                row, col, orientation = self.get_ship_placement()
+                if self.board.is_ship_location_valid(ship, row, col, orientation):
+                    self.board.place_ship(ship, row, col, orientation)
+                    break
+                else:
+                    print("Invalid placement! Try again.")
+
+    def get_ship_placement(self):
+        while True:
+            try:
+                row = int(input("Enter row (1-10): ")) - 1
+                col = ord(input("Enter column (A-J): ").upper()) - ord('A')
+                orientation = input("Enter orientation (h for horizontal, v for vertical): ").lower()
+                if orientation in ('h', 'v'):
+                    return row, col, orientation
+                else:
+                    print("Invalid orientation! Please enter 'h' or 'v'.")
+            except (ValueError, IndexError):
+                print("Invalid input! Please enter valid row and column.")
+
+    def make_move(self, enemy):
+        while True:
+            try:
+                enemy.board.print_board()
+                print(f"{self.name}, make your move:")
+                row = int(input("Enter row (1-10): ")) - 1
+                col = ord(input("Enter column (A-J): ").upper()) - ord('A')
+                if enemy.enemy_board.grid[row][col] != ' ':
+                    print("You've already attacked this cell! Try again.")
+                else:
+                    hit = enemy.board.grid[row][col] != ' '
+                    enemy.enemy_board.grid[row][col] = 'X' if hit else 'O'
+                    print("It's a HIT!" if hit else "It's a MISS!")
+                    return hit
+            except (ValueError, IndexError):
+                print("Invalid input! Please enter valid row and column.")
 
 def main():
-    size = 5
-    num_ships = 3
-    board = create_board(size)
-    ships = create_board(size)
-    place_ships(ships, num_ships)
-    print("Добро пожаловать в игру 'Морской бой'!")
-    print("Поле размером", size, "x", size)
-    print_board(board)
-    turns = 0
+    print("Welcome to Battleship!")
+    player_name = input("Enter your name: ")
+    player = Player(player_name)
+    computer = Player("Computer")
+    
+    player.place_ships()
+    computer.place_ships()
+
+    players = [player, computer]
+    current_player_index = 0
     while True:
-        guess_row = int(input("Введите номер строки (0-" + str(size - 1) + "): "))
-        guess_col = int(input("Введите номер столбца (0-" + str(size - 1) + "): "))
-        if guess_row < 0 or guess_row >= size or guess_col < 0 or guess_col >= size:
-            print("Выберите корректные значения!")
-            continue
-        turns += 1
-        guess = (guess_row, guess_col)
-        if check_guess(guess, ships):
-            print_board(board)
-            print("Потоплено кораблей:", sum(row.count("!") for row in ships))
-            if sum(row.count("!") for row in ships) == num_ships:
-                print("Поздравляем! Вы победили за", turns, "ходов!")
-                break
+        current_player = players[current_player_index]
+        opponent = players[(current_player_index + 1) % 2]
+        if current_player == player:
+            print("Your turn!")
         else:
-            print_board(board)
+            print("Computer's turn!")
+        if current_player.make_move(opponent):
+            sunk_ships = [ship for ship in opponent.board.ships.keys() if opponent.board.is_ship_sunk(ship)]
+            for ship in sunk_ships:
+                print(f"{opponent.name}'s {ship} has been sunk!")
+            if all([opponent.board.is_ship_sunk(ship) for ship in opponent.board.ships.keys()]):
+                print(f"{current_player.name} wins!")
+                break
+        current_player_index = (current_player_index + 1) % 2
 
 if __name__ == "__main__":
     main()
