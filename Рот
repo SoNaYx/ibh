@@ -4,111 +4,101 @@ class Ship:
     def __init__(self, points):
         self.points = points
 
-    def is_hit(self, x, y):
-        return (x, y) in self.points
-
 class Board:
     def __init__(self, ships):
+        self.grid = [['O' for _ in range(6)] for _ in range(6)]
         self.ships = ships
-        self.size = 6
-        self.grid = [['O' for _ in range(self.size)] for _ in range(self.size)]
-
-    def display(self, hide_ships):
-        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
-        for i in range(self.size):
-            row = ' | '.join(self.grid[i])
-            print(f"{i+1} | {row} |")
-
-    def place_ships(self):
         for ship in self.ships:
-            for x, y in ship.points:
+            for point in ship.points:
+                x, y = point
                 self.grid[x][y] = '■'
 
-    def is_valid_move(self, x, y):
-        return 0 <= x < self.size and 0 <= y < self.size and self.grid[x][y] not in ['X', 'T']
-
-    def make_move(self, x, y):
-        if not self.is_valid_move(x, y):
-            raise ValueError("Invalid move!")
-        if any(ship.is_hit(x, y) for ship in self.ships):
-            self.grid[x][y] = 'X'
-            print("Hit!")
-            return True
-        else:
-            self.grid[x][y] = 'T'
-            print("Miss!")
-            return False
+    def display(self):
+        print("  | 1 | 2 | 3 | 4 | 5 | 6 |")
+        for i in range(6):
+            print(f"{i+1} | {' | '.join(self.grid[i])} |")
 
 class Game:
     def __init__(self):
-        self.player_board = Board(self.generate_ships())
-        self.computer_board = Board(self.generate_ships())
+        self.player_board = self.create_board()
+        self.computer_board = self.create_board()
         self.player_moves = set()
+        self.computer_moves = set()
+        self.initialize_ships()
 
-    def generate_ships(self):
+    def create_board(self):
         ships = []
-        while len(ships) < 7:  # 1x3, 2x2, 4x1
-            ship_size = min(3, 7 - len(ships))
-            ship_points = self.generate_ship_points(ship_size)
-            if self.is_valid_ship(ship_points, ships):
-                ships.append(Ship(ship_points))
-        return ships
+        ships.append(Ship([(0, 0), (0, 1), (0, 2)]))  # 1 корабль на 3 клетки
+        ships.append(Ship([(1, 0), (1, 1)]))        # 2 корабля на 2 клетки
+        ships.append(Ship([(2, 0), (2, 1)]))
+        ships.append(Ship([(3, 0)]))                # 4 корабля на одну клетку
+        ships.append(Ship([(4, 0)]))
+        ships.append(Ship([(5, 0)]))
+        ships.append(Ship([(5, 2)]))
+        ships.append(Ship([(5, 4)]))
+        ships.append(Ship([(5, 5)]))
+        return Board(ships)
 
-    def generate_ship_points(self, size):
-        direction = random.choice(['horizontal', 'vertical'])
-        if direction == 'horizontal':
+    def initialize_ships(self):
+        pass  # Добавить проверку на расположение кораблей
+
+    def player_turn(self):
+        print("Ваш ход:")
+        while True:
+            try:
+                x = int(input("Введите номер строки (1-6): ")) - 1
+                y = int(input("Введите номер столбца (1-6): ")) - 1
+                if (x, y) in self.player_moves:
+                    print("Вы уже стреляли в эту клетку! Попробуйте еще раз.")
+                    continue
+                self.player_moves.add((x, y))
+                if self.computer_board.grid[x][y] == '■':
+                    print("Попадание!")
+                    self.computer_board.grid[x][y] = 'X'
+                    if self.check_win(self.computer_board):
+                        print("Вы победили!")
+                        return
+                else:
+                    print("Промах!")
+                    self.computer_board.grid[x][y] = 'T'
+                break
+            except (ValueError, IndexError):
+                print("Неверный ввод! Попробуйте еще раз.")
+
+    def computer_turn(self):
+        print("Ход компьютера:")
+        while True:
             x = random.randint(0, 5)
-            y = random.randint(0, 6 - size)
-            return [(x, y+i) for i in range(size)]
-        else:
-            x = random.randint(0, 6 - size)
             y = random.randint(0, 5)
-            return [(x+i, y) for i in range(size)]
+            if (x, y) not in self.computer_moves:
+                self.computer_moves.add((x, y))
+                if self.player_board.grid[x][y] == '■':
+                    print("Компьютер попал в ваш корабль!")
+                    self.player_board.grid[x][y] = 'X'
+                    if self.check_win(self.player_board):
+                        print("Вы проиграли!")
+                        return
+                else:
+                    print("Компьютер промахнулся.")
+                    self.player_board.grid[x][y] = 'T'
+                break
 
-    def is_valid_ship(self, points, existing_ships):
-        for x, y in points:
-            if any(abs(x - ship_x) <= 1 and abs(y - ship_y) <= 1 for ship in existing_ships for ship_x, ship_y in ship.points):
+    def check_win(self, board):
+        for row in board.grid:
+            if '■' in row:
                 return False
         return True
 
-    def player_turn(self):
-        while True:
-            try:
-                x = int(input("Enter row (1-6): ")) - 1
-                y = int(input("Enter column (1-6): ")) - 1
-                if (x, y) in self.player_moves:
-                    print("You've already shot there!")
-                    continue
-                self.player_moves.add((x, y))
-                hit = self.computer_board.make_move(x, y)
-                self.computer_board.display(hide_ships=True)
-                return hit
-            except ValueError:
-                print("Invalid input! Please enter a number between 1 and 6.")
-
-    def computer_turn(self):
-        while True:
-            x = random.randint(0, 5)
-            y = random.randint(0, 5)
-            if (x, y) not in self.computer_board.grid:
-                hit = self.player_board.make_move(x, y)
-                self.player_board.display(hide_ships=False)
-                return hit
-
     def play(self):
-        print("Let's play Battleship!")
-        self.player_board.place_ships()
-        self.player_board.display(hide_ships=False)
-        self.computer_board.place_ships()
-
+        print("Начинаем игру!")
         while True:
-            if self.player_turn():
-                print("Player wins!")
+            self.player_board.display()
+            self.player_turn()
+            if self.check_win(self.computer_board):
                 break
-            if self.computer_turn():
-                print("Computer wins!")
+            self.computer_turn()
+            if self.check_win(self.player_board):
                 break
 
-if __name__ == "__main__":
-    game = Game()
-    game.play()
+game = Game()
+game.play()
