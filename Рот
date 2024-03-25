@@ -1,129 +1,98 @@
 import random
 
-class Board:
-    def __init__(self):
-        self.size = 6
-        self.ships = {'3': 1, '2': 2, '1': 4}
-        self.player_board = [['O' for _ in range(self.size)] for _ in range(self.size)]
-        self.computer_board = [['O' for _ in range(self.size)] for _ in range(self.size)]
-        self.player_ships = {}
-        self.computer_ships = {}
+class Ship:
+    def __init__(self, points):
+        self.points = points
 
-    def print_board(self, board):
-        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
-        for i in range(self.size):
-            print(i+1, end=" | ")
-            for j in range(self.size):
-                print(board[i][j], end=" | ")
-            print()
+class Board:
+    def __init__(self, ships):
+        self.grid = [['O' for _ in range(6)] for _ in range(6)]
+        self.ships = ships
+        self.place_ships()
 
     def place_ships(self):
-        for ship_size, num_ships in self.ships.items():
-            for _ in range(num_ships):
-                self.place_ship(int(ship_size), self.player_board, self.player_ships)
+        for ship in self.ships:
+            for point in ship.points:
+                x, y = point
+                self.grid[x][y] = '■'
 
-    def place_ship(self, ship_size, board, ships):
-        while True:
-            orientation = random.choice(['horizontal', 'vertical'])
-            if orientation == 'horizontal':
-                x = random.randint(0, self.size - 1)
-                y = random.randint(0, self.size - ship_size)
-                if self.is_valid_placement(x, y, ship_size, orientation, board, ships):
-                    for i in range(ship_size):
-                        board[x][y+i] = '■'
-                    ships[(x, y, orientation)] = ship_size
+    def display(self):
+        print(" | 1 | 2 | 3 | 4 | 5 | 6 |")
+        for i in range(6):
+            print(i + 1, "|", " | ".join(self.grid[i]), "|")
+
+def random_point():
+    return random.randint(0, 5), random.randint(0, 5)
+
+def generate_ships():
+    ships = []
+    while len(ships) < 1:  # 1 ship of length 3
+        points = [random_point(), (0, 0), (0, 0)]
+        for i in range(1, len(points)):
+            while points[i] == points[i - 1]:
+                points[i] = random_point()
+        ships.append(Ship(points))
+    while len(ships) < 3:  # 2 ships of length 2
+        points = [random_point(), (0, 0)]
+        for i in range(1, len(points)):
+            while points[i] == points[i - 1]:
+                points[i] = random_point()
+        ships.append(Ship(points))
+    while len(ships) < 7:  # 4 ships of length 1
+        points = [random_point()]
+        ships.append(Ship(points))
+    return ships
+
+def player_move(board):
+    try:
+        x, y = map(int, input("Введите координаты для выстрела (например, 1 2): ").split())
+        if board.grid[x-1][y-1] == 'X' or board.grid[x-1][y-1] == 'T':
+            raise ValueError("Вы уже стреляли в эту клетку.")
+        return x-1, y-1
+    except (ValueError, IndexError):
+        print("Некорректные координаты. Попробуйте еще раз.")
+        return player_move(board)
+
+def check_victory(board):
+    for row in board.grid:
+        if '■' in row:
+            return False
+    return True
+
+def main():
+    player_board = Board(generate_ships())
+    computer_board = Board(generate_ships())
+    player_turn = True
+
+    while True:
+        if player_turn:
+            print("Ваша доска:")
+            player_board.display()
+            print("Доска противника:")
+            computer_board.display()
+            x, y = player_move(computer_board)
+            if computer_board.grid[x][y] == '■':
+                print("Вы попали!")
+                computer_board.grid[x][y] = 'X'
+                if check_victory(computer_board):
+                    print("Вы победили!")
                     break
             else:
-                x = random.randint(0, self.size - ship_size)
-                y = random.randint(0, self.size - 1)
-                if self.is_valid_placement(x, y, ship_size, orientation, board, ships):
-                    for i in range(ship_size):
-                        board[x+i][y] = '■'
-                    ships[(x, y, orientation)] = ship_size
-                    break
-
-    def is_valid_placement(self, x, y, ship_size, orientation, board, ships):
-        if orientation == 'horizontal':
-            for i in range(ship_size):
-                if board[x][y+i] != 'O':
-                    return False
-                for dx, dy in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]:
-                    if 0 <= x+dx < self.size and 0 <= y+dy < self.size and board[x+dx][y+i+dy] != 'O':
-                        return False
+                print("Промах!")
+                computer_board.grid[x][y] = 'T'
+            player_turn = False
         else:
-            for i in range(ship_size):
-                if board[x+i][y] != 'O':
-                    return False
-                for dx, dy in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]:
-                    if 0 <= x+dx < self.size and 0 <= y+dy < self.size and board[x+i+dx][y+dy] != 'O':
-                        return False
-        return True
-
-    def computer_place_ships(self):
-        for ship_size, num_ships in self.ships.items():
-            for _ in range(num_ships):
-                self.place_ship(int(ship_size), self.computer_board, self.computer_ships)
-
-    def player_turn(self):
-        while True:
-            try:
-                x, y = map(int, input("Enter coordinates to fire (row column): ").split())
-                if 1 <= x <= self.size and 1 <= y <= self.size:
-                    x -= 1
-                    y -= 1
-                    if self.computer_board[x][y] == '■':
-                        print("Hit!")
-                        self.computer_board[x][y] = 'X'
-                        break
-                    elif self.computer_board[x][y] == 'X' or self.computer_board[x][y] == 'T':
-                        print("You've already fired there.")
-                    else:
-                        print("Miss!")
-                        self.computer_board[x][y] = 'T'
-                        break
-                else:
-                    print("Coordinates out of bounds.")
-            except ValueError:
-                print("Invalid input. Please enter row and column as two numbers separated by a space.")
-
-    def computer_turn(self):
-        while True:
-            x = random.randint(0, self.size - 1)
-            y = random.randint(0, self.size - 1)
-            if self.player_board[x][y] == '■':
-                print("Computer hit your ship!")
-                self.player_board[x][y] = 'X'
-                break
-            elif self.player_board[x][y] == 'X' or self.player_board[x][y] == 'T':
-                continue
+            x, y = random_point()
+            if player_board.grid[x][y] == '■':
+                print("Противник попал!")
+                player_board.grid[x][y] = 'X'
+                if check_victory(player_board):
+                    print("Противник победил!")
+                    break
             else:
-                print("Computer missed!")
-                self.player_board[x][y] = 'T'
-                break
+                print("Противник промахнулся!")
+                player_board.grid[x][y] = 'T'
+            player_turn = True
 
-    def player_has_ships_left(self):
-        return any('■' in row for row in self.player_board)
-
-    def computer_has_ships_left(self):
-        return any('■' in row for row in self.computer_board)
-
-    def play_game(self):
-        print("Let's play Battleship!")
-        self.place_ships()
-        self.computer_place_ships()
-        while self.player_has_ships_left() and self.computer_has_ships_left():
-            print("Your board:")
-            self.print_board(self.player_board)
-            print("Computer's board:")
-            self.print_board(self.computer_board)
-            self.player_turn()
-            if not self.computer_has_ships_left():
-                print("Congratulations! You win!")
-                break
-            self.computer_turn()
-            if not self.player_has_ships_left():
-                print("Sorry, you lose. Better luck next time!")
-                break
-
-game = Board()
-game.play_game()
+if __name__ == "__main__":
+    main()
