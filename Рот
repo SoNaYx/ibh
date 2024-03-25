@@ -1,117 +1,84 @@
 import random
 
-class Board:
-    def __init__(self):
-        self.size = 10
-        self.ships = {'Aircraft Carrier': 5, 'Battleship': 4, 'Submarine': 3, 'Destroyer': 3, 'Patrol Boat': 2}
-        self.grid = [[' ' for _ in range(self.size)] for _ in range(self.size)]
-
-    def place_ship(self, ship, row, col, orientation):
-        size = self.ships[ship]
-        if orientation == 'h':
-            for c in range(col, col + size):
-                self.grid[row][c] = ship[0]
-        else:
-            for r in range(row, row + size):
-                self.grid[r][col] = ship[0]
-
-    def print_board(self):
-        print("  ", " ".join([chr(65 + i) for i in range(self.size)]))
-        for i, row in enumerate(self.grid):
-            print(f"{i+1:2}", " ".join(row))
-        print()
-
-    def is_valid_location(self, row, col):
-        return 0 <= row < self.size and 0 <= col < self.size
-
-    def is_ship_location_valid(self, ship, row, col, orientation):
-        size = self.ships[ship]
-        if orientation == 'h':
-            return all([self.is_valid_location(row, c) and self.grid[row][c] == ' ' for c in range(col, col + size)])
-        else:
-            return all([self.is_valid_location(r, col) and self.grid[r][col] == ' ' for r in range(row, row + size)])
-
-    def is_ship_sunk(self, ship):
-        symbol = ship[0]
-        for row in self.grid:
-            if symbol in row:
-                return False
-        return True
-
 class Player:
     def __init__(self, name):
         self.name = name
-        self.board = Board()
-        self.enemy_board = Board()
+        self.board = [['O' for _ in range(6)] for _ in range(6)]
+        self.ships = {'■': 1, '□': 2, '▲': 3}  # Dictionary to store ship symbols and their lengths
 
     def place_ships(self):
-        for ship, size in self.board.ships.items():
+        for ship, length in self.ships.items():
             while True:
-                self.board.print_board()
-                print(f"{self.name}, place your {ship} ({size} cells)")
-                row, col, orientation = self.get_ship_placement()
-                if self.board.is_ship_location_valid(ship, row, col, orientation):
-                    self.board.place_ship(ship, row, col, orientation)
-                    break
+                orientation = random.choice(['horizontal', 'vertical'])
+                if orientation == 'horizontal':
+                    x = random.randint(0, 5)
+                    y = random.randint(0, 5 - length)
+                    if all(self.board[x][y+i] == 'O' for i in range(length)):
+                        for i in range(length):
+                            self.board[x][y+i] = ship
+                        break
                 else:
-                    print("Invalid placement! Try again.")
+                    x = random.randint(0, 5 - length)
+                    y = random.randint(0, 5)
+                    if all(self.board[x+i][y] == 'O' for i in range(length)):
+                        for i in range(length):
+                            self.board[x+i][y] = ship
+                        break
 
-    def get_ship_placement(self):
-        while True:
-            try:
-                row = int(input("Enter row (1-10): ")) - 1
-                col = ord(input("Enter column (A-J): ").upper()) - ord('A')
-                orientation = input("Enter orientation (h for horizontal, v for vertical): ").lower()
-                if orientation in ('h', 'v'):
-                    return row, col, orientation
-                else:
-                    print("Invalid orientation! Please enter 'h' or 'v'.")
-            except (ValueError, IndexError):
-                print("Invalid input! Please enter valid row and column.")
+    def display_board(self, hide_ships=False):
+        print("   | 1 | 2 | 3 | 4 | 5 | 6 |")
+        print("----------------------------")
+        for i in range(6):
+            print(f" {i+1} | {' | '.join(self.board[i])} |")
+            print("----------------------------")
 
-    def make_move(self, enemy):
-        while True:
-            try:
-                enemy.board.print_board()
-                print(f"{self.name}, make your move:")
-                row = int(input("Enter row (1-10): ")) - 1
-                col = ord(input("Enter column (A-J): ").upper()) - ord('A')
-                if enemy.enemy_board.grid[row][col] != ' ':
-                    print("You've already attacked this cell! Try again.")
-                else:
-                    hit = enemy.board.grid[row][col] != ' '
-                    enemy.enemy_board.grid[row][col] = 'X' if hit else 'O'
-                    print("It's a HIT!" if hit else "It's a MISS!")
-                    return hit
-            except (ValueError, IndexError):
-                print("Invalid input! Please enter valid row and column.")
+    def receive_attack(self, x, y):
+        if self.board[x][y] != 'O':
+            print(f"{self.name} got hit!")
+            self.board[x][y] = 'X'
+            return True
+        else:
+            print(f"{self.name} missed!")
+            self.board[x][y] = '-'
+            return False
+
 
 def main():
     print("Welcome to Battleship!")
     player_name = input("Enter your name: ")
     player = Player(player_name)
     computer = Player("Computer")
-    
     player.place_ships()
     computer.place_ships()
 
-    players = [player, computer]
-    current_player_index = 0
     while True:
-        current_player = players[current_player_index]
-        opponent = players[(current_player_index + 1) % 2]
-        if current_player == player:
-            print("Your turn!")
+        print("\nPlayer's turn:")
+        player.display_board(hide_ships=True)
+        x, y = map(int, input("Enter coordinates to attack (row column): ").split())
+        x -= 1  # Adjusting for 0-based indexing
+        y -= 1
+        if not (0 <= x <= 5 and 0 <= y <= 5):
+            print("Invalid coordinates. Try again.")
+            continue
+        if computer.receive_attack(x, y):
+            print("You hit a ship!")
         else:
-            print("Computer's turn!")
-        if current_player.make_move(opponent):
-            sunk_ships = [ship for ship in opponent.board.ships.keys() if opponent.board.is_ship_sunk(ship)]
-            for ship in sunk_ships:
-                print(f"{opponent.name}'s {ship} has been sunk!")
-            if all([opponent.board.is_ship_sunk(ship) for ship in opponent.board.ships.keys()]):
-                print(f"{current_player.name} wins!")
-                break
-        current_player_index = (current_player_index + 1) % 2
+            print("You missed!")
+        if all(all(cell != '■' for cell in row) for row in computer.board):
+            print("Congratulations! You won!")
+            break
+
+        print("\nComputer's turn:")
+        x = random.randint(0, 5)
+        y = random.randint(0, 5)
+        print(f"Computer attacks: {x+1} {y+1}")
+        if player.receive_attack(x, y):
+            print("Computer hit your ship!")
+        else:
+            print("Computer missed!")
+        if all(all(cell != '■' for cell in row) for row in player.board):
+            print("Sorry, you lost!")
+            break
 
 if __name__ == "__main__":
     main()
