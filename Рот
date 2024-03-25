@@ -1,118 +1,62 @@
 import random
 
-class Ship:
-    def __init__(self, points):
-        self.points = points
+def create_board(size):
+    board = []
+    for _ in range(size):
+        row = ["O"] * size
+        board.append(row)
+    return board
 
-class Board:
-    def __init__(self, ships):
-        self.ships = ships
-        self.grid = [['O' for _ in range(6)] for _ in range(6)]
+def print_board(board):
+    for row in board:
+        print(" ".join(row))
 
-    def place_ships(self):
-        for ship in self.ships:
-            for point in ship.points:
-                x, y = point
-                self.grid[x][y] = '■'
+def place_ships(board, num_ships):
+    size = len(board)
+    for _ in range(num_ships):
+        ship_row = random.randint(0, size - 1)
+        ship_col = random.randint(0, size - 1)
+        while board[ship_row][ship_col] == "X":
+            ship_row = random.randint(0, size - 1)
+            ship_col = random.randint(0, size - 1)
+        board[ship_row][ship_col] = "X"
 
-    def display(self):
-        print("   A B C D E F")
-        print("  -------------")
-        for i in range(6):
-            print(i + 1, "|", end=" ")
-            for j in range(6):
-                print(self.grid[i][j], "|", end=" ")
-            print("\n  -------------")
-
-class Player:
-    def __init__(self):
-        self.board = Board(self.generate_ships())
-        self.shots = set()
-
-    def generate_ships(self):
-        ships = []
-        while len(ships) < 7:
-            ship_points = set()
-            while len(ship_points) < 3:
-                x = random.randint(0, 5)
-                y = random.randint(0, 5)
-                ship_points.add((x, y))
-            ship = Ship(list(ship_points))
-            if self.is_valid_ship(ship, ships):
-                ships.append(ship)
-        return ships
-
-    def is_valid_ship(self, ship, existing_ships):
-        for existing_ship in existing_ships:
-            for point in ship.points:
-                for existing_point in existing_ship.points:
-                    if (abs(point[0] - existing_point[0]) <= 1 and
-                        abs(point[1] - existing_point[1]) <= 1 and
-                        point != existing_point):
-                        return False
+def check_guess(guess, ships):
+    row, col = guess
+    if ships[row][col] == "X":
+        print("Попадание!")
+        ships[row][col] = "!"
         return True
-
-    def make_shot(self, target_player):
-        while True:
-            try:
-                move = input("Enter your move (e.g., A1): ").upper()
-                if len(move) != 2 or not move[0].isalpha() or not move[1].isdigit():
-                    raise ValueError("Invalid move format. Please enter a letter followed by a number.")
-                x = ord(move[0]) - ord('A')
-                y = int(move[1]) - 1
-                if not (0 <= x < 6 and 0 <= y < 6):
-                    raise ValueError("Coordinates out of range.")
-                if (x, y) in self.shots:
-                    raise ValueError("You've already shot at this position.")
-                self.shots.add((x, y))
-                return x, y
-            except ValueError as e:
-                print(e)
-
-class ComputerPlayer(Player):
-    def make_shot(self, target_player):
-        available_shots = [(x, y) for x in range(6) for y in range(6) if (x, y) not in self.shots]
-        if not available_shots:
-            return None
-        return random.choice(available_shots)
+    else:
+        print("Промах!")
+        return False
 
 def main():
-    player = Player()
-    computer = ComputerPlayer()
-
-    player.board.place_ships()
-    computer.board.place_ships()
-
+    size = 5
+    num_ships = 3
+    board = create_board(size)
+    ships = create_board(size)
+    place_ships(ships, num_ships)
+    print("Добро пожаловать в игру 'Морской бой'!")
+    print("Поле размером", size, "x", size)
+    print_board(board)
+    turns = 0
     while True:
-        print("Player's board:")
-        player.board.display()
-        print("\nComputer's board:")
-        computer.board.display()
-
-        print("\nPlayer's turn:")
-        player_x, player_y = player.make_shot(computer)
-        if (player_x, player_y) in [(x, y) for ship in computer.board.ships for x, y in ship.points]:
-            print("You hit a ship!")
-            computer.board.grid[player_x][player_y] = 'X'
+        guess_row = int(input("Введите номер строки (0-" + str(size - 1) + "): "))
+        guess_col = int(input("Введите номер столбца (0-" + str(size - 1) + "): "))
+        if guess_row < 0 or guess_row >= size or guess_col < 0 or guess_col >= size:
+            print("Выберите корректные значения!")
+            continue
+        turns += 1
+        guess = (guess_row, guess_col)
+        if check_guess(guess, ships):
+            print_board(board)
+            print("Потоплено кораблей:", sum(row.count("!") for row in ships))
+            if sum(row.count("!") for row in ships) == num_ships:
+                print("Поздравляем! Вы победили за", turns, "ходов!")
+                break
         else:
-            print("You missed!")
-            computer.board.grid[player_x][player_y] = 'T'
-
-        if all([all([cell != '■' for cell in row]) for row in computer.board.grid]):
-            print("Congratulations! You sank all the computer's ships!")
-            break
-
-        print("\nComputer's turn:")
-        computer_x, computer_y = computer.make_shot(player)
-        if (computer_x, computer_y) in [(x, y) for ship in player.board.ships for x, y in ship.points]:
-            print("Computer hit your ship!")
-            player.board.grid[computer_x][computer_y] = 'X'
-        else:
-            print("Computer missed!")
-
-        if all([all([cell != '■' for cell in row]) for row in player.board.grid]):
-            print("Sorry, the computer sank all your ships. You lose!")
-            break
+            print_board(board)
 
 if __name__ == "__main__":
     main()
