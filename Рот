@@ -20,54 +20,49 @@ class Board:
     def place_ships(self):
         for ship_size, num_ships in self.ships.items():
             for _ in range(num_ships):
-                self.place_ship(int(ship_size))
+                self.place_ship(int(ship_size), self.player_board, self.player_ships)
 
-    def place_ship(self, ship_size):
-        board = self.player_board
+    def place_ship(self, ship_size, board, ships):
         while True:
             orientation = random.choice(['horizontal', 'vertical'])
             if orientation == 'horizontal':
                 x = random.randint(0, self.size - 1)
                 y = random.randint(0, self.size - ship_size)
-                if all(board[x][y+i] == 'O' for i in range(ship_size)):
+                if self.is_valid_placement(x, y, ship_size, orientation, board, ships):
                     for i in range(ship_size):
                         board[x][y+i] = '■'
-                    self.player_ships[(x, y, orientation)] = ship_size
+                    ships[(x, y, orientation)] = ship_size
                     break
             else:
                 x = random.randint(0, self.size - ship_size)
                 y = random.randint(0, self.size - 1)
-                if all(board[x+i][y] == 'O' for i in range(ship_size)):
+                if self.is_valid_placement(x, y, ship_size, orientation, board, ships):
                     for i in range(ship_size):
                         board[x+i][y] = '■'
-                    self.player_ships[(x, y, orientation)] = ship_size
+                    ships[(x, y, orientation)] = ship_size
                     break
+
+    def is_valid_placement(self, x, y, ship_size, orientation, board, ships):
+        if orientation == 'horizontal':
+            for i in range(ship_size):
+                if board[x][y+i] != 'O':
+                    return False
+                for dx, dy in [(0, 0), (0, 1), (0, -1), (1, 0), (-1, 0), (1, 1), (1, -1), (-1, 1), (-1, -1)]:
+                    if 0 <= x+dx < self.size and 0 <= y+dy < self.size and board[x+dx][y+i+dy] != 'O':
+                        return False
+        else:
+            for i in range(ship_size):
+                if board[x+i][y] != 'O':
+                    return False
+                for dx, dy in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (1, -1), (-1, 1), (-1, -1)]:
+                    if 0 <= x+dx < self.size and 0 <= y+dy < self.size and board[x+i+dx][y+dy] != 'O':
+                        return False
+        return True
 
     def computer_place_ships(self):
         for ship_size, num_ships in self.ships.items():
             for _ in range(num_ships):
-                self.computer_place_ship(int(ship_size))
-
-    def computer_place_ship(self, ship_size):
-        board = self.computer_board
-        while True:
-            orientation = random.choice(['horizontal', 'vertical'])
-            if orientation == 'horizontal':
-                x = random.randint(0, self.size - 1)
-                y = random.randint(0, self.size - ship_size)
-                if all(board[x][y+i] == 'O' for i in range(ship_size)):
-                    for i in range(ship_size):
-                        board[x][y+i] = '■'
-                    self.computer_ships[(x, y, orientation)] = ship_size
-                    break
-            else:
-                x = random.randint(0, self.size - ship_size)
-                y = random.randint(0, self.size - 1)
-                if all(board[x+i][y] == 'O' for i in range(ship_size)):
-                    for i in range(ship_size):
-                        board[x+i][y] = '■'
-                    self.computer_ships[(x, y, orientation)] = ship_size
-                    break
+                self.place_ship(int(ship_size), self.computer_board, self.computer_ships)
 
     def player_turn(self):
         while True:
