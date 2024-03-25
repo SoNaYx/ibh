@@ -1,84 +1,134 @@
 import random
 
-class Player:
-    def __init__(self, name):
-        self.name = name
-        self.board = [['O' for _ in range(6)] for _ in range(6)]
-        self.ships = {'■': 1, '□': 2, '▲': 3}  # Dictionary to store ship symbols and their lengths
+class Board:
+    def __init__(self):
+        self.size = 6
+        self.ships = {'3': 1, '2': 2, '1': 4}
+        self.player_board = [['O' for _ in range(self.size)] for _ in range(self.size)]
+        self.computer_board = [['O' for _ in range(self.size)] for _ in range(self.size)]
+        self.player_ships = {}
+        self.computer_ships = {}
+
+    def print_board(self, board):
+        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
+        for i in range(self.size):
+            print(i+1, end=" | ")
+            for j in range(self.size):
+                print(board[i][j], end=" | ")
+            print()
 
     def place_ships(self):
-        for ship, length in self.ships.items():
-            while True:
-                orientation = random.choice(['horizontal', 'vertical'])
-                if orientation == 'horizontal':
-                    x = random.randint(0, 5)
-                    y = random.randint(0, 5 - length)
-                    if all(self.board[x][y+i] == 'O' for i in range(length)):
-                        for i in range(length):
-                            self.board[x][y+i] = ship
+        for ship_size, num_ships in self.ships.items():
+            for _ in range(num_ships):
+                self.place_ship(int(ship_size))
+
+    def place_ship(self, ship_size):
+        board = self.player_board
+        while True:
+            orientation = random.choice(['horizontal', 'vertical'])
+            if orientation == 'horizontal':
+                x = random.randint(0, self.size - 1)
+                y = random.randint(0, self.size - ship_size)
+                if all(board[x][y+i] == 'O' for i in range(ship_size)):
+                    for i in range(ship_size):
+                        board[x][y+i] = '■'
+                    self.player_ships[(x, y, orientation)] = ship_size
+                    break
+            else:
+                x = random.randint(0, self.size - ship_size)
+                y = random.randint(0, self.size - 1)
+                if all(board[x+i][y] == 'O' for i in range(ship_size)):
+                    for i in range(ship_size):
+                        board[x+i][y] = '■'
+                    self.player_ships[(x, y, orientation)] = ship_size
+                    break
+
+    def computer_place_ships(self):
+        for ship_size, num_ships in self.ships.items():
+            for _ in range(num_ships):
+                self.computer_place_ship(int(ship_size))
+
+    def computer_place_ship(self, ship_size):
+        board = self.computer_board
+        while True:
+            orientation = random.choice(['horizontal', 'vertical'])
+            if orientation == 'horizontal':
+                x = random.randint(0, self.size - 1)
+                y = random.randint(0, self.size - ship_size)
+                if all(board[x][y+i] == 'O' for i in range(ship_size)):
+                    for i in range(ship_size):
+                        board[x][y+i] = '■'
+                    self.computer_ships[(x, y, orientation)] = ship_size
+                    break
+            else:
+                x = random.randint(0, self.size - ship_size)
+                y = random.randint(0, self.size - 1)
+                if all(board[x+i][y] == 'O' for i in range(ship_size)):
+                    for i in range(ship_size):
+                        board[x+i][y] = '■'
+                    self.computer_ships[(x, y, orientation)] = ship_size
+                    break
+
+    def player_turn(self):
+        while True:
+            try:
+                x, y = map(int, input("Enter coordinates to fire (row column): ").split())
+                if 1 <= x <= self.size and 1 <= y <= self.size:
+                    x -= 1
+                    y -= 1
+                    if self.computer_board[x][y] == '■':
+                        print("Hit!")
+                        self.computer_board[x][y] = 'X'
+                        break
+                    elif self.computer_board[x][y] == 'X' or self.computer_board[x][y] == 'T':
+                        print("You've already fired there.")
+                    else:
+                        print("Miss!")
+                        self.computer_board[x][y] = 'T'
                         break
                 else:
-                    x = random.randint(0, 5 - length)
-                    y = random.randint(0, 5)
-                    if all(self.board[x+i][y] == 'O' for i in range(length)):
-                        for i in range(length):
-                            self.board[x+i][y] = ship
-                        break
+                    print("Coordinates out of bounds.")
+            except ValueError:
+                print("Invalid input. Please enter row and column as two numbers separated by a space.")
 
-    def display_board(self, hide_ships=False):
-        print("   | 1 | 2 | 3 | 4 | 5 | 6 |")
-        print("----------------------------")
-        for i in range(6):
-            print(f" {i+1} | {' | '.join(self.board[i])} |")
-            print("----------------------------")
+    def computer_turn(self):
+        while True:
+            x = random.randint(0, self.size - 1)
+            y = random.randint(0, self.size - 1)
+            if self.player_board[x][y] == '■':
+                print("Computer hit your ship!")
+                self.player_board[x][y] = 'X'
+                break
+            elif self.player_board[x][y] == 'X' or self.player_board[x][y] == 'T':
+                continue
+            else:
+                print("Computer missed!")
+                self.player_board[x][y] = 'T'
+                break
 
-    def receive_attack(self, x, y):
-        if self.board[x][y] != 'O':
-            print(f"{self.name} got hit!")
-            self.board[x][y] = 'X'
-            return True
-        else:
-            print(f"{self.name} missed!")
-            self.board[x][y] = '-'
-            return False
+    def player_has_ships_left(self):
+        return any('■' in row for row in self.player_board)
 
+    def computer_has_ships_left(self):
+        return any('■' in row for row in self.computer_board)
 
-def main():
-    print("Welcome to Battleship!")
-    player_name = input("Enter your name: ")
-    player = Player(player_name)
-    computer = Player("Computer")
-    player.place_ships()
-    computer.place_ships()
+    def play_game(self):
+        print("Let's play Battleship!")
+        self.place_ships()
+        self.computer_place_ships()
+        while self.player_has_ships_left() and self.computer_has_ships_left():
+            print("Your board:")
+            self.print_board(self.player_board)
+            print("Computer's board:")
+            self.print_board(self.computer_board)
+            self.player_turn()
+            if not self.computer_has_ships_left():
+                print("Congratulations! You win!")
+                break
+            self.computer_turn()
+            if not self.player_has_ships_left():
+                print("Sorry, you lose. Better luck next time!")
+                break
 
-    while True:
-        print("\nPlayer's turn:")
-        player.display_board(hide_ships=True)
-        x, y = map(int, input("Enter coordinates to attack (row column): ").split())
-        x -= 1  # Adjusting for 0-based indexing
-        y -= 1
-        if not (0 <= x <= 5 and 0 <= y <= 5):
-            print("Invalid coordinates. Try again.")
-            continue
-        if computer.receive_attack(x, y):
-            print("You hit a ship!")
-        else:
-            print("You missed!")
-        if all(all(cell != '■' for cell in row) for row in computer.board):
-            print("Congratulations! You won!")
-            break
-
-        print("\nComputer's turn:")
-        x = random.randint(0, 5)
-        y = random.randint(0, 5)
-        print(f"Computer attacks: {x+1} {y+1}")
-        if player.receive_attack(x, y):
-            print("Computer hit your ship!")
-        else:
-            print("Computer missed!")
-        if all(all(cell != '■' for cell in row) for row in player.board):
-            print("Sorry, you lost!")
-            break
-
-if __name__ == "__main__":
-    main()
+game = Board()
+game.play_game()
