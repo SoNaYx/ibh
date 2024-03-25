@@ -1,6 +1,3 @@
-Вот реализация игры "Морской бой" на Python, удовлетворяющая вашим требованиям:
-
-```python
 import random
 
 class Ship:
@@ -16,108 +13,114 @@ class Ship:
 
 class Board:
     def __init__(self, ships):
-        self.grid = [['O' for _ in range(6)] for _ in range(6)]
+        self.size = 6
         self.ships = ships
-        self.remaining_ships = len(ships)
+        self.grid = [['O' for _ in range(self.size)] for _ in range(self.size)]
 
-        for ship in ships:
+    def display(self):
+        print(" | 1 | 2 | 3 | 4 | 5 | 6 | ")
+        for i in range(self.size):
+            row = ' | '.join(self.grid[i])
+            print(f"{i+1} | {row} |")
+
+    def place_ships(self):
+        for ship in self.ships:
             for point in ship.points:
                 x, y = point
                 self.grid[y][x] = '■'
 
-    def display(self):
-        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
-        for i in range(6):
-            row = ' | '.join(self.grid[i])
-            print(f"{i+1} | {row} |")
+    def check_valid_shot(self, x, y):
+        if not (0 <= x < self.size and 0 <= y < self.size):
+            raise ValueError("Invalid coordinates! Choose coordinates within the board.")
+        if self.grid[y][x] == 'X' or self.grid[y][x] == 'T':
+            raise ValueError("You've already shot at this position!")
 
-    def mark_hit(self, x, y):
-        if self.grid[y][x] == 'O':
-            self.grid[y][x] = 'T'
-        elif self.grid[y][x] == '■':
-            self.grid[y][x] = 'X'
-            for ship in self.ships:
-                if (x, y) in ship.points:
-                    ship.hit((x, y))
-                    if ship.is_sunk():
-                        self.remaining_ships -= 1
-            return True
+    def shoot(self, x, y):
+        self.check_valid_shot(x, y)
+        if (x, y) in self.opponent_ships:
+            for ship in self.opponent_ships[(x, y)]:
+                ship.hit((x, y))
+                self.grid[y][x] = 'X'
+                if ship.is_sunk():
+                    print("You sunk a ship!")
+                    del self.opponent_ships[(x, y)]
+                else:
+                    print("You hit a ship!")
         else:
-            raise ValueError("Invalid move")
+            self.grid[y][x] = 'T'
+            print("You missed!")
 
-        return False
+    def all_ships_sunk(self):
+        return all(ship.is_sunk() for ship in self.opponent_ships.values())
 
-def generate_ships():
-    ships = []
-    directions = [(0, 1), (1, 0)]
-    sizes = [3, 2, 2, 1, 1, 1, 1]
+    def opponent_move(self):
+        x, y = random.randint(0, self.size - 1), random.randint(0, self.size - 1)
+        while (x, y) in self.shots_taken:
+            x, y = random.randint(0, self.size - 1), random.randint(0, self.size - 1)
+        self.shots_taken.add((x, y))
+        if (x, y) in self.player_ships:
+            for ship in self.player_ships[(x, y)]:
+                ship.hit((x, y))
+                if ship.is_sunk():
+                    print("Computer sunk your ship!")
+                    del self.player_ships[(x, y)]
+                else:
+                    print("Computer hit your ship!")
+        else:
+            print("Computer missed your ships!")
 
-    for size in sizes:
-        while True:
-            x = random.randint(0, 5)
-            y = random.randint(0, 5)
-            direction = random.choice(directions)
+def main():
+    player_ships = [
+        Ship([(0, 0), (1, 0), (2, 0)]),
+        Ship([(4, 0), (4, 1)]),
+        Ship([(0, 2), (0, 3)]),
+        Ship([(2, 3), (2, 4), (2, 5)]),
+        Ship([(4, 3), (5, 3)]),
+        Ship([(0, 5)])
+    ]
 
-            points = [(x + i * direction[0], y + i * direction[1]) for i in range(size)]
-            if all(0 <= p[0] <= 5 and 0 <= p[1] <= 5 for p in points):
-                valid = True
-                for ship in ships:
-                    if any(p in ship.points for p in points):
-                        valid = False
-                        break
-                if valid:
-                    ships.append(Ship(points))
-                    break
+    opponent_ships = [
+        Ship([(3, 0), (3, 1)]),
+        Ship([(5, 0)]),
+        Ship([(1, 2)]),
+        Ship([(4, 2)]),
+        Ship([(1, 4)]),
+        Ship([(3, 4)]),
+        Ship([(5, 4)]),
+        Ship([(1, 5)]),
+        Ship([(3, 5)]),
+        Ship([(5, 5)])
+    ]
 
-    return ships
+    player_board = Board(player_ships)
+    opponent_board = Board(opponent_ships)
 
-def player_turn(board):
-    while True:
+    player_board.place_ships()
+    opponent_board.place_ships()
+
+    player_board.shots_taken = set()
+    opponent_board.shots_taken = set()
+
+    while not player_board.all_ships_sunk() and not opponent_board.all_ships_sunk():
+        print("Your turn:")
+        player_board.display()
         try:
-            x = int(input("Enter X coordinate (1-6): ")) - 1
-            y = int(input("Enter Y coordinate (1-6): ")) - 1
-            if not (0 <= x <= 5 and 0 <= y <= 5):
-                raise ValueError("Coordinates out of range")
-            if (x, y) in board.hits:
-                raise ValueError("You've already fired at this coordinate")
-            return x, y
+            x, y = map(int, input("Enter coordinates to shoot (e.g., 1 2): ").split())
+            player_board.shoot(x - 1, y - 1)
         except ValueError as e:
             print(e)
+            continue
 
-def computer_turn(board):
-    while True:
-        x = random.randint(0, 5)
-        y = random.randint(0, 5)
-        if (x, y) not in board.hits:
-            return x, y
-
-def play_game():
-    player_board = Board(generate_ships())
-    computer_board = Board(generate_ships())
-
-    while player_board.remaining_ships > 0 and computer_board.remaining_ships > 0:
-        print("\nPlayer's board:")
-        player_board.display()
-        print("\nComputer's board:")
-        computer_board.display()
-
-        print("\nPlayer's turn:")
-        x, y = player_turn(computer_board)
-        player_board.hits.add((x, y))
-        player_board.mark_hit(x, y)
+        if player_board.all_ships_sunk():
+            print("Congratulations! You've sunk all enemy ships. You win!")
+            break
 
         print("\nComputer's turn:")
-        x, y = computer_turn(player_board)
-        computer_board.hits.add((x, y))
-        computer_board.mark_hit(x, y)
+        opponent_board.opponent_move()
 
-    if player_board.remaining_ships == 0:
-        print("\nPlayer wins!")
-    else:
-        print("\nComputer wins!")
+        if opponent_board.all_ships_sunk():
+            print("Oh no! All your ships have been sunk. You lose!")
+            break
 
 if __name__ == "__main__":
-    play_game()
-```
-
-Этот код создает консольную игру "Морской бой" с интерфейсом, как описано в вашем запросе. Игрок играет против компьютера, который делает ходы наугад.
+    main()
