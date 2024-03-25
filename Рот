@@ -1,116 +1,118 @@
-import random 
+import random
 
-class Ship: 
-    def __init__(self, points): 
+class Ship:
+    def __init__(self, points):
         self.points = points
 
-class Board: 
-    def __init__(self, ships): 
-        self.ships = ships 
-        self.grid = [['O' for _ in range(6)] for _ in range(6)] 
+class Board:
+    def __init__(self, ships):
+        self.ships = ships
+        self.grid = [['O' for _ in range(6)] for _ in range(6)]
 
-    def place_ships(self): 
-        for ship in self.ships: 
-            for point in ship.points: 
-                x, y = point 
-                self.grid[x][y] = '■' 
+    def place_ships(self):
+        for ship in self.ships:
+            for point in ship.points:
+                x, y = point
+                self.grid[x][y] = '■'
 
-    def display(self): 
-        print(" | 1 | 2 | 3 | 4 | 5 | 6 |") 
-        print(" —-------------------------") 
-        for i in range(6): 
-            print(i + 1, "|", end=" ") 
-            for j in range(6): 
-                print(self.grid[i][j], "|", end=" ") 
-            print("\n —-------------------------")
+    def display(self):
+        print("   A B C D E F")
+        print("  -------------")
+        for i in range(6):
+            print(i + 1, "|", end=" ")
+            for j in range(6):
+                print(self.grid[i][j], "|", end=" ")
+            print("\n  -------------")
 
-class Player: 
-    def __init__(self): 
-        self.board = Board(self.generate_ships()) 
-        self.shots = set() 
+class Player:
+    def __init__(self):
+        self.board = Board(self.generate_ships())
+        self.shots = set()
 
-    def generate_ships(self): 
-        ships = [] 
-        while len(ships) < 7: 
-            ship_points = set() 
-            while len(ship_points) < 3: 
-                x = random.randint(0, 5) 
-                y = random.randint(0, 5) 
-                ship_points.add((x, y)) 
-            ship = Ship(list(ship_points)) 
-            if self.is_valid_ship(ship, ships): 
-                ships.append(ship) 
-        return ships 
+    def generate_ships(self):
+        ships = []
+        while len(ships) < 7:
+            ship_points = set()
+            while len(ship_points) < 3:
+                x = random.randint(0, 5)
+                y = random.randint(0, 5)
+                ship_points.add((x, y))
+            ship = Ship(list(ship_points))
+            if self.is_valid_ship(ship, ships):
+                ships.append(ship)
+        return ships
 
-    def is_valid_ship(self, ship, existing_ships): 
-        for existing_ship in existing_ships: 
-            for point in ship.points: 
-                for existing_point in existing_ship.points: 
-                    if abs(point[0] - existing_point[0]) <= 1 and abs(point[1] - existing_point[1]) <= 1: 
-                        return False 
-        return True 
+    def is_valid_ship(self, ship, existing_ships):
+        for existing_ship in existing_ships:
+            for point in ship.points:
+                for existing_point in existing_ship.points:
+                    if (abs(point[0] - existing_point[0]) <= 1 and
+                        abs(point[1] - existing_point[1]) <= 1 and
+                        point != existing_point):
+                        return False
+        return True
 
-    def make_shot(self, target_player): 
-        while True: 
-            try: 
-                move = input("Enter your move (e.g., A1): ").upper() 
-                if len(move) != 2 or not move[0].isalpha() or not move[1].isdigit(): 
-                    raise ValueError("Invalid move format. Please enter a letter followed by a number.") 
-                x = ord(move[0]) - ord('A') 
-                y = int(move[1]) - 1 
-                if (x, y) in self.shots: 
-                    raise ValueError("You've already shot at this position.") 
-                self.shots.add((x, y)) 
-                return x, y 
-            except ValueError as e: 
-                print(e) 
+    def make_shot(self, target_player):
+        while True:
+            try:
+                move = input("Enter your move (e.g., A1): ").upper()
+                if len(move) != 2 or not move[0].isalpha() or not move[1].isdigit():
+                    raise ValueError("Invalid move format. Please enter a letter followed by a number.")
+                x = ord(move[0]) - ord('A')
+                y = int(move[1]) - 1
+                if not (0 <= x < 6 and 0 <= y < 6):
+                    raise ValueError("Coordinates out of range.")
+                if (x, y) in self.shots:
+                    raise ValueError("You've already shot at this position.")
+                self.shots.add((x, y))
+                return x, y
+            except ValueError as e:
+                print(e)
 
-class ComputerPlayer(Player): 
-    def make_shot(self, target_player): 
-        while True: 
-            x = random.randint(0, 5) 
-            y = random.randint(0, 5) 
-            if (x, y) not in self.shots: 
-                self.shots.add((x, y)) 
-                return x, y 
+class ComputerPlayer(Player):
+    def make_shot(self, target_player):
+        available_shots = [(x, y) for x in range(6) for y in range(6) if (x, y) not in self.shots]
+        if not available_shots:
+            return None
+        return random.choice(available_shots)
 
-def main(): 
-    player = Player() 
-    computer = ComputerPlayer() 
+def main():
+    player = Player()
+    computer = ComputerPlayer()
 
-    player.board.place_ships() 
-    computer.board.place_ships() 
+    player.board.place_ships()
+    computer.board.place_ships()
 
-    while True: 
-        print("Player's board:") 
-        player.board.display() 
-        print("\nComputer's board:") 
-        computer.board.display() 
+    while True:
+        print("Player's board:")
+        player.board.display()
+        print("\nComputer's board:")
+        computer.board.display()
 
-        print("\nPlayer's turn:") 
-        player_x, player_y = player.make_shot(computer) 
-        if (player_x, player_y) in [(x, y) for ship in computer.board.ships for x, y in ship.points]: 
-            print("Hit!") 
-            computer.board.grid[player_x][player_y] = 'X' 
-        else: 
-            print("Miss!") 
-            computer.board.grid[player_x][player_y] = 'T' 
+        print("\nPlayer's turn:")
+        player_x, player_y = player.make_shot(computer)
+        if (player_x, player_y) in [(x, y) for ship in computer.board.ships for x, y in ship.points]:
+            print("You hit a ship!")
+            computer.board.grid[player_x][player_y] = 'X'
+        else:
+            print("You missed!")
+            computer.board.grid[player_x][player_y] = 'T'
 
-        if all([all([cell != '■' for cell in row]) for row in computer.board.grid]): 
-            print("Congratulations! You sank all the computer's ships!") 
-            break 
+        if all([all([cell != '■' for cell in row]) for row in computer.board.grid]):
+            print("Congratulations! You sank all the computer's ships!")
+            break
 
-        print("\nComputer's turn:") 
-        computer_x, computer_y = computer.make_shot(player) 
-        if (computer_x, computer_y) in [(x, y) for ship in player.board.ships for x, y in ship.points]: 
-            print("Computer hit your ship!") 
-            player.board.grid[computer_x][computer_y] = 'X' 
-        else: 
-            print("Computer missed!") 
+        print("\nComputer's turn:")
+        computer_x, computer_y = computer.make_shot(player)
+        if (computer_x, computer_y) in [(x, y) for ship in player.board.ships for x, y in ship.points]:
+            print("Computer hit your ship!")
+            player.board.grid[computer_x][computer_y] = 'X'
+        else:
+            print("Computer missed!")
 
-        if all([all([cell != '■' for cell in row]) for row in player.board.grid]): 
-            print("Sorry, the computer sank all your ships. You lose!") 
-            break 
+        if all([all([cell != '■' for cell in row]) for row in player.board.grid]):
+            print("Sorry, the computer sank all your ships. You lose!")
+            break
 
-if __name__ == "__main__": 
+if __name__ == "__main__":
     main()
