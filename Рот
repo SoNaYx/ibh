@@ -84,8 +84,9 @@ def main():
         computer_board.display()
 
         try:
-            x = int(input("\nВведите координату X для выстрела: ")) - 1
-            y = int(input("Введите координату Y для выстрела: ")) - 1
+            x, y = map(int, input("\nСделайте ход в формате (x, y): ").split(','))
+            x -= 1
+            y -= 1
             if not player_board.make_move(x, y):
                 print("Вы промахнулись!")
             
