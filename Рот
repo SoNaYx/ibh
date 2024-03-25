@@ -9,110 +9,101 @@ class Board:
         self.ships = ships
         self.size = 6
         self.grid = [['O' for _ in range(self.size)] for _ in range(self.size)]
+
+    def place_ships(self):
         for ship in self.ships:
             for point in ship.points:
                 x, y = point
                 self.grid[x][y] = '■'
 
     def display(self):
-        print("  | 1 | 2 | 3 | 4 | 5 | 6 |")
+        print(" | 1 | 2 | 3 | 4 | 5 | 6 | ")
         for i in range(self.size):
-            row = " ".join(str(cell) for cell in self.grid[i])
-            print(f"{i+1} | {row} |")
+            print(f"{i + 1}| {' | '.join(self.grid[i])} |")
 
-    def receive_shot(self, x, y):
-        if self.grid[x][y] == '■':
-            self.grid[x][y] = 'X'
-            return True
-        elif self.grid[x][y] == 'O':
-            self.grid[x][y] = 'T'
-            return False
-        else:
-            raise Exception("You've already shot here.")
+class Player:
+    def __init__(self, name):
+        self.name = name
+        self.shots = set()
+
+    def make_move(self):
+        while True:
+            try:
+                x = int(input("Enter row number (1-6): ")) - 1
+                y = int(input("Enter column number (1-6): ")) - 1
+                if (x, y) in self.shots:
+                    raise ValueError("You've already shot in this cell.")
+                return x, y
+            except (ValueError, IndexError):
+                print("Invalid input. Please enter row and column numbers between 1 and 6.")
 
 def generate_ships():
     ships = []
-    for size, quantity in [(3, 1), (2, 2), (1, 4)]:
-        for _ in range(quantity):
-            ship = generate_ship(size)
-            ships.append(ship)
-    return ships
-
-def generate_ship(size):
-    while True:
-        orientation = random.choice(['horizontal', 'vertical'])
-        if orientation == 'horizontal':
+    for size in [3, 2, 2, 1, 1, 1, 1]:
+        ship_points = set()
+        while True:
             x = random.randint(0, 5)
-            y = random.randint(0, 5 - size)
-            points = [(x, y+i) for i in range(size)]
-        else:
-            x = random.randint(0, 5 - size)
             y = random.randint(0, 5)
-            points = [(x+i, y) for i in range(size)]
-
-        if is_valid_ship(points):
-            return Ship(points)
-
-def is_valid_ship(points):
-    for x, y in points:
-        if not (0 <= x < 6 and 0 <= y < 6):
-            return False
-    for x, y in points:
-        for dx in range(-1, 2):
-            for dy in range(-1, 2):
-                nx, ny = x + dx, y + dy
-                if (nx, ny) in points:
-                    return False
-    return True
+            orientation = random.choice(['horizontal', 'vertical'])
+            if all((x + i, y) not in ship_points for i in range(size)) and orientation == 'horizontal':
+                ship_points.update((x + i, y) for i in range(size))
+                break
+            elif all((x, y + i) not in ship_points for i in range(size)) and orientation == 'vertical':
+                ship_points.update((x, y + i) for i in range(size))
+                break
+        ships.append(Ship(ship_points))
+    return ships
 
 def main():
     player_board = Board(generate_ships())
+    player_board.place_ships()
     computer_board = Board(generate_ships())
-    player_shots = set()
+    computer_board.place_ships()
 
+    player = Player("Player")
+    computer = Player("Computer")
+
+    player_turn = True
     while True:
-        print("\nYour board:")
+        print("\nPlayer's board:")
         player_board.display()
         print("\nComputer's board:")
         computer_board.display()
 
-        try:
-            x = int(input("Enter the row number to shoot: ")) - 1
-            y = int(input("Enter the column number to shoot: ")) - 1
-            if (x, y) in player_shots:
-                raise Exception("You've already shot here.")
-            player_shots.add((x, y))
-            result = computer_board.receive_shot(x, y)
-            if result:
-                print("You hit a ship!")
+        if player_turn:
+            print("\nPlayer's turn:")
+            x, y = player.make_move()
+            if (x, y) in computer.shots:
+                print("You've already shot in this cell.")
+                continue
+            computer.shots.add((x, y))
+            if computer_board.grid[x][y] == '■':
+                computer_board.grid[x][y] = 'X'
+                print("You've hit a ship!")
             else:
-                print("You missed.")
-            
+                computer_board.grid[x][y] = 'T'
+                print("You've missed.")
             if all(all(cell != '■' for cell in row) for row in computer_board.grid):
-                print("Congratulations! You've sunk all of the computer's ships.")
+                print("Congratulations! You've sunk all computer's ships. You win!")
                 break
-            
-            # Computer's turn
+        else:
+            print("\nComputer's turn:")
             x = random.randint(0, 5)
             y = random.randint(0, 5)
-            while (x, y) in player_shots:
-                x = random.randint(0, 5)
-                y = random.randint(0, 5)
-            player_shots.add((x, y))
-            result = player_board.receive_shot(x, y)
-            if result:
-                print("The computer hit your ship!")
+            if (x, y) in player.shots:
+                continue
+            player.shots.add((x, y))
+            if player_board.grid[x][y] == '■':
+                player_board.grid[x][y] = 'X'
+                print("Computer hit your ship!")
             else:
-                print("The computer missed.")
-                
+                player_board.grid[x][y] = 'T'
+                print("Computer missed.")
             if all(all(cell != '■' for cell in row) for row in player_board.grid):
-                print("Sorry, the computer has sunk all of your ships.")
+                print("Computer has sunk all your ships. You lose!")
                 break
 
-        except ValueError:
-            print("Please enter valid row and column numbers.")
-        except Exception as e:
-            print(e)
+        player_turn = not player_turn
 
 if __name__ == "__main__":
     main()
