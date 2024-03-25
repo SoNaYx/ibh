@@ -8,91 +8,110 @@ class Board:
     def __init__(self, ships):
         self.grid = [['O' for _ in range(6)] for _ in range(6)]
         self.ships = ships
-        self.place_ships()
+        self.remaining_ships = sum(len(ship.points) for ship in ships)
 
-    def place_ships(self):
-        for ship in self.ships:
-            for point in ship.points:
-                x, y = point
+        for ship in ships:
+            for x, y in ship.points:
                 self.grid[x][y] = '■'
 
     def display(self):
-        print(" | 1 | 2 | 3 | 4 | 5 | 6 |")
+        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
         for i in range(6):
-            print(i + 1, "|", " | ".join(self.grid[i]), "|")
+            row = " | ".join(self.grid[i])
+            print(f"{i+1} | {row} |")
 
-def random_point():
-    return random.randint(0, 5), random.randint(0, 5)
+    def check_hit(self, x, y):
+        for ship in self.ships:
+            if (x, y) in ship.points:
+                ship.points.remove((x, y))
+                self.grid[x][y] = 'X'
+                self.remaining_ships -= 1
+                return True
+        self.grid[x][y] = 'T'
+        return False
 
-def generate_ships():
-    ships = []
-    while len(ships) < 1:  # 1 ship of length 3
-        points = [random_point(), (0, 0), (0, 0)]
-        for i in range(1, len(points)):
-            while points[i] == points[i - 1]:
-                points[i] = random_point()
-        ships.append(Ship(points))
-    while len(ships) < 3:  # 2 ships of length 2
-        points = [random_point(), (0, 0)]
-        for i in range(1, len(points)):
-            while points[i] == points[i - 1]:
-                points[i] = random_point()
-        ships.append(Ship(points))
-    while len(ships) < 7:  # 4 ships of length 1
-        points = [random_point()]
-        ships.append(Ship(points))
-    return ships
-
-def player_move(board):
-    try:
-        x, y = map(int, input("Введите координаты для выстрела (например, 1 2): ").split())
-        if board.grid[x-1][y-1] == 'X' or board.grid[x-1][y-1] == 'T':
-            raise ValueError("Вы уже стреляли в эту клетку.")
-        return x-1, y-1
-    except (ValueError, IndexError):
-        print("Некорректные координаты. Попробуйте еще раз.")
-        return player_move(board)
-
-def check_victory(board):
-    for row in board.grid:
-        if '■' in row:
-            return False
-    return True
+def get_random_point(used_points):
+    while True:
+        x = random.randint(0, 5)
+        y = random.randint(0, 5)
+        if (x, y) not in used_points:
+            return x, y
 
 def main():
-    player_board = Board(generate_ships())
-    computer_board = Board(generate_ships())
-    player_turn = True
+    player_board = Board([
+        Ship([(0,0), (0,1), (0,2)]),
+        Ship([(1,0), (1,1)]),
+        Ship([(1,3), (1,4)]),
+        Ship([(2,0)]),
+        Ship([(2,2)]),
+        Ship([(2,4)]),
+        Ship([(2,5)]),
+        Ship([(3,1)]),
+        Ship([(3,3)]),
+        Ship([(4,0)]),
+        Ship([(4,2)]),
+        Ship([(4,4)]),
+        Ship([(4,5)]),
+        Ship([(5,1)]),
+        Ship([(5,3)])
+    ])
 
-    while True:
-        if player_turn:
-            print("Ваша доска:")
-            player_board.display()
-            print("Доска противника:")
-            computer_board.display()
-            x, y = player_move(computer_board)
-            if computer_board.grid[x][y] == '■':
-                print("Вы попали!")
-                computer_board.grid[x][y] = 'X'
-                if check_victory(computer_board):
-                    print("Вы победили!")
-                    break
-            else:
-                print("Промах!")
-                computer_board.grid[x][y] = 'T'
-            player_turn = False
+    computer_board = Board([
+        Ship([(0,0), (0,1), (0,2)]),
+        Ship([(1,0), (1,1)]),
+        Ship([(1,3), (1,4)]),
+        Ship([(2,0)]),
+        Ship([(2,2)]),
+        Ship([(2,4)]),
+        Ship([(2,5)]),
+        Ship([(3,1)]),
+        Ship([(3,3)]),
+        Ship([(4,0)]),
+        Ship([(4,2)]),
+        Ship([(4,4)]),
+        Ship([(4,5)]),
+        Ship([(5,1)]),
+        Ship([(5,3)])
+    ])
+
+    player_used_points = set()
+    computer_used_points = set()
+
+    while player_board.remaining_ships > 0 and computer_board.remaining_ships > 0:
+        print("Player's Turn:")
+        player_board.display()
+        while True:
+            try:
+                x = int(input("Enter X coordinate (1-6): ")) - 1
+                y = int(input("Enter Y coordinate (1-6): ")) - 1
+                if (x, y) in player_used_points:
+                    raise ValueError("You have already fired on this coordinate!")
+                if not (0 <= x <= 5) or not (0 <= y <= 5):
+                    raise ValueError("Coordinates out of range!")
+                break
+            except ValueError as ve:
+                print(ve)
+        
+        player_used_points.add((x, y))
+        if computer_board.check_hit(x, y):
+            print("Hit!")
         else:
-            x, y = random_point()
-            if player_board.grid[x][y] == '■':
-                print("Противник попал!")
-                player_board.grid[x][y] = 'X'
-                if check_victory(player_board):
-                    print("Противник победил!")
-                    break
+            print("Miss!")
+
+        print("Computer's Turn:")
+        while True:
+            x, y = get_random_point(computer_used_points)
+            computer_used_points.add((x, y))
+            if player_board.check_hit(x, y):
+                print(f"Computer hits at ({x+1}, {y+1})!")
             else:
-                print("Противник промахнулся!")
-                player_board.grid[x][y] = 'T'
-            player_turn = True
+                print(f"Computer misses at ({x+1}, {y+1})!")
+                break
+
+    if player_board.remaining_ships == 0:
+        print("Congratulations! You won!")
+    else:
+        print("Computer wins! Better luck next time!")
 
 if __name__ == "__main__":
     main()
