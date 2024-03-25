@@ -34,14 +34,14 @@ class Board:
 
     def make_move(self, x, y):
         if not self.is_valid_move(x, y):
-            raise ValueError("Invalid move!")
+            raise ValueError("Неверный ход!")
         if self.grid[x][y] == '■':
             self.grid[x][y] = 'X'
             for ship in self.ships:
                 if (x, y) in ship.points:
                     ship.hit((x, y))
                     if ship.is_sunk():
-                        print("You sunk a ship!")
+                        print("Вы потопили корабль!")
             return True
         else:
             self.grid[x][y] = 'T'
@@ -78,16 +78,16 @@ def main():
     player_board.place_ships()
 
     while not player_board.all_ships_sunk() and not computer_board.all_ships_sunk():
-        print("\nYour Board:")
+        print("\nВаша Доска:")
         player_board.display()
-        print("\nComputer's Board:")
+        print("\nДоска Компьютера:")
         computer_board.display()
 
         try:
-            x = int(input("\nEnter X coordinate to shoot: ")) - 1
-            y = int(input("Enter Y coordinate to shoot: ")) - 1
+            x = int(input("\nВведите координату X для выстрела: ")) - 1
+            y = int(input("Введите координату Y для выстрела: ")) - 1
             if not player_board.make_move(x, y):
-                print("You missed!")
+                print("Вы промахнулись!")
             
             computer_x = random.randint(0, 5)
             computer_y = random.randint(0, 5)
@@ -95,14 +95,14 @@ def main():
                 computer_x = random.randint(0, 5)
                 computer_y = random.randint(0, 5)
             if not computer_board.make_move(computer_x, computer_y):
-                print("Computer missed!")
+                print("Компьютер промахнулся!")
         except ValueError as e:
             print(e)
     
     if player_board.all_ships_sunk():
-        print("\nYou win! You destroyed all of the computer's ships.")
+        print("\nВы выиграли! Вы уничтожили все корабли компьютера.")
     else:
-        print("\nComputer wins! It destroyed all of your ships.")
+        print("\nКомпьютер выиграл! Он уничтожил все ваши корабли.")
 
 if __name__ == "__main__":
     main()
