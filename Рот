@@ -6,98 +6,122 @@ class Ship:
 
 class Board:
     def __init__(self, ships):
-        self.grid = [['O' for _ in range(6)] for _ in range(6)]
+        self.grid_size = 6
+        self.player_board = [['O' for _ in range(self.grid_size)] for _ in range(self.grid_size)]
+        self.enemy_board = [['O' for _ in range(self.grid_size)] for _ in range(self.grid_size)]
         self.ships = ships
+        self.place_ships()
+
+    def place_ships(self):
         for ship in self.ships:
             for point in ship.points:
                 x, y = point
-                self.grid[x][y] = '■'
+                self.player_board[x][y] = '■'
 
-    def display(self):
-        print("  | 1 | 2 | 3 | 4 | 5 | 6 |")
-        for i in range(6):
-            print(f"{i+1} | {' | '.join(self.grid[i])} |")
+    def display_player_board(self):
+        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
+        for i in range(self.grid_size):
+            print(f"{i+1} | {' | '.join(self.player_board[i])} |")
+
+    def display_enemy_board(self):
+        print("  | 1 | 2 | 3 | 4 | 5 | 6 | ")
+        for i in range(self.grid_size):
+            print(f"{i+1} | {' | '.join(self.enemy_board[i])} |")
 
 class Game:
     def __init__(self):
-        self.player_board = self.create_board()
-        self.computer_board = self.create_board()
-        self.player_moves = set()
-        self.computer_moves = set()
-        self.initialize_ships()
-
-    def create_board(self):
-        ships = []
-        ships.append(Ship([(0, 0), (0, 1), (0, 2)]))  # 1 корабль на 3 клетки
-        ships.append(Ship([(1, 0), (1, 1)]))        # 2 корабля на 2 клетки
-        ships.append(Ship([(2, 0), (2, 1)]))
-        ships.append(Ship([(3, 0)]))                # 4 корабля на одну клетку
-        ships.append(Ship([(4, 0)]))
-        ships.append(Ship([(5, 0)]))
-        ships.append(Ship([(5, 2)]))
-        ships.append(Ship([(5, 4)]))
-        ships.append(Ship([(5, 5)]))
-        return Board(ships)
-
-    def initialize_ships(self):
-        pass  # Добавить проверку на расположение кораблей
+        self.player_board = Board([
+            Ship([(1, 1), (1, 2), (1, 3)]),
+            Ship([(3, 4), (3, 5)]),
+            Ship([(5, 0)]),
+            Ship([(0, 2)]),
+            Ship([(4, 4)]),
+            Ship([(2, 0)]),
+            Ship([(4, 0)]),
+            Ship([(5, 2)]),
+            Ship([(0, 5)]),
+            Ship([(2, 3)]),
+        ])
+        self.enemy_board = Board([
+            Ship([(1, 1), (1, 2), (1, 3)]),
+            Ship([(3, 4), (3, 5)]),
+            Ship([(5, 0)]),
+            Ship([(0, 2)]),
+            Ship([(4, 4)]),
+            Ship([(2, 0)]),
+            Ship([(4, 0)]),
+            Ship([(5, 2)]),
+            Ship([(0, 5)]),
+            Ship([(2, 3)]),
+        ])
+        self.player_shots = set()
+        self.enemy_shots = set()
+        self.player_won = False
+        self.enemy_won = False
 
     def player_turn(self):
-        print("Ваш ход:")
-        while True:
-            try:
-                x = int(input("Введите номер строки (1-6): ")) - 1
-                y = int(input("Введите номер столбца (1-6): ")) - 1
-                if (x, y) in self.player_moves:
-                    print("Вы уже стреляли в эту клетку! Попробуйте еще раз.")
-                    continue
-                self.player_moves.add((x, y))
-                if self.computer_board.grid[x][y] == '■':
-                    print("Попадание!")
-                    self.computer_board.grid[x][y] = 'X'
-                    if self.check_win(self.computer_board):
-                        print("Вы победили!")
-                        return
-                else:
-                    print("Промах!")
-                    self.computer_board.grid[x][y] = 'T'
-                break
-            except (ValueError, IndexError):
-                print("Неверный ввод! Попробуйте еще раз.")
+        try:
+            print("Your turn:")
+            x = int(input("Enter row number (1-6): ")) - 1
+            y = int(input("Enter column number (1-6): ")) - 1
+            if (x, y) in self.player_shots:
+                raise ValueError("You've already shot in this cell!")
+            self.player_shots.add((x, y))
+            if self.enemy_board.player_board[x][y] == '■':
+                print("You hit a ship!")
+                self.enemy_board.player_board[x][y] = 'X'
+            else:
+                print("You missed!")
+                self.enemy_board.player_board[x][y] = 'T'
+        except ValueError as ve:
+            print(ve)
 
-    def computer_turn(self):
-        print("Ход компьютера:")
+    def enemy_turn(self):
+        print("Enemy's turn:")
         while True:
             x = random.randint(0, 5)
             y = random.randint(0, 5)
-            if (x, y) not in self.computer_moves:
-                self.computer_moves.add((x, y))
-                if self.player_board.grid[x][y] == '■':
-                    print("Компьютер попал в ваш корабль!")
-                    self.player_board.grid[x][y] = 'X'
-                    if self.check_win(self.player_board):
-                        print("Вы проиграли!")
-                        return
-                else:
-                    print("Компьютер промахнулся.")
-                    self.player_board.grid[x][y] = 'T'
+            if (x, y) not in self.enemy_shots:
                 break
+        self.enemy_shots.add((x, y))
+        if self.player_board.player_board[x][y] == '■':
+            print("Enemy hit your ship!")
+            self.player_board.player_board[x][y] = 'X'
+            if self.check_player_win():
+                print("Enemy wins!")
+                self.enemy_won = True
+        else:
+            print("Enemy missed!")
+            self.player_board.player_board[x][y] = 'T'
 
-    def check_win(self, board):
-        for row in board.grid:
+    def check_player_win(self):
+        for row in self.player_board.player_board:
+            if '■' in row:
+                return False
+        return True
+
+    def check_enemy_win(self):
+        for row in self.enemy_board.player_board:
             if '■' in row:
                 return False
         return True
 
     def play(self):
-        print("Начинаем игру!")
-        while True:
-            self.player_board.display()
+        print("Welcome to Battleship!")
+        while not self.player_won and not self.enemy_won:
+            print("\nYour board:")
+            self.player_board.display_player_board()
+            print("\nEnemy's board:")
+            self.enemy_board.display_enemy_board()
             self.player_turn()
-            if self.check_win(self.computer_board):
+            if self.check_enemy_win():
+                print("You win!")
+                self.player_won = True
                 break
-            self.computer_turn()
-            if self.check_win(self.player_board):
+            self.enemy_turn()
+            if self.check_player_win():
+                print("Enemy wins!")
+                self.enemy_won = True
                 break
 
 game = Game()
